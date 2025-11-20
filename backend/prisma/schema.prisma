@@ -1,5 +1,5 @@
 // ALIVE Advertising Platform Database Schema
-// This schema defines the core models for the platform
+// Complete schema with all business models
 
 generator client {
   provider = "prisma-client-js"
@@ -43,6 +43,7 @@ model KiranaStore {
   earnings        StoreEarning[]
   screenSlots     ScreenSlot[]
   rebates         Rebate[]
+  electricityBills ElectricityBill[]
 
   // Timestamps
   createdAt       DateTime @default(now())
@@ -50,6 +51,7 @@ model KiranaStore {
 
   @@index([ownerPhone])
   @@index([latitude, longitude])
+  @@index([city])
 }
 
 model Customer {
@@ -58,24 +60,55 @@ model Customer {
   phone           String   @unique
   email           String?  @unique
 
-  // Location
-  address         String?
-  city            String?
-  latitude        Float?
-  longitude       Float?
+  // Wallet for cashback/credits
+  walletBalance   Float    @default(0)
 
   // Status
   isActive        Boolean  @default(true)
 
   // Relations
+  addresses       Address[]
   orders          Order[]
   cart            CartItem[]
+  shoppingLists   ShoppingList[]
+  electricityBills ElectricityBill[]
 
   // Timestamps
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([phone])
+}
+
+model Address {
+  id              String   @id @default(cuid())
+
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // Address details
+  label           String   @default("Home") // Home, Work, Other
+  addressLine1    String
+  addressLine2    String?
+  city            String
+  state           String
+  pincode         String
+
+  // Location
+  latitude        Float?
+  longitude       Float?
+
+  // Default address flag
+  isDefault       Boolean  @default(false)
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  orders          Order[]
+
+  @@index([customerId])
   @@index([latitude, longitude])
 }
 
@@ -118,6 +151,7 @@ model AdvertisedProduct {
   // Relations
   orderItems      OrderItem[]
   cartItems       CartItem[]
+  shoppingListItems ShoppingListItem[]
 
   // Timestamps
   createdAt       DateTime @default(now())
@@ -144,6 +178,52 @@ model CartItem {
 
   @@unique([customerId, productId])
   @@index([customerId])
+}
+
+// ============================================
+// SHOPPING LISTS
+// ============================================
+
+model ShoppingList {
+  id              String   @id @default(cuid())
+
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  name            String   @default("My Shopping List")
+  isActive        Boolean  @default(true)
+
+  // Relations
+  items           ShoppingListItem[]
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+model ShoppingListItem {
+  id              String   @id @default(cuid())
+
+  shoppingListId  String
+  shoppingList    ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+
+  // Product reference (optional - can be custom item)
+  productId       String?
+  product         AdvertisedProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // Custom item name (if not linked to product)
+  customItemName  String?
+
+  quantity        Int      @default(1)
+  isChecked       Boolean  @default(false)
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([shoppingListId])
 }
 
 // ============================================
@@ -181,6 +261,16 @@ model Order {
   kiranaStoreId   String
   kiranaStore     KiranaStore @relation(fields: [kiranaStoreId], references: [id])
 
+  // Delivery address
+  addressId       String?
+  address         Address? @relation(fields: [addressId], references: [id], onDelete: SetNull)
+
+  // Manual delivery details (if address is deleted)
+  deliveryAddress String
+  deliveryLat     Float?
+  deliveryLng     Float?
+  deliveryPhone   String
+
   // Order details
   items           OrderItem[]
   totalAmount     Float
@@ -194,14 +284,8 @@ model Order {
   status          OrderStatus @default(PENDING)
   paymentStatus   PaymentStatus @default(PENDING)
 
-  // Delivery details
-  deliveryAddress String
-  deliveryLat     Float?
-  deliveryLng     Float?
-  deliveryPhone   String
-
   // Payment details
-  paymentMethod   String   @default("online") // online, cod
+  paymentMethod   String   @default("online") // online, cod, wallet
   razorpayOrderId String?
   razorpayPaymentId String?
 
@@ -215,6 +299,7 @@ model Order {
 
   @@index([customerId])
   @@index([kiranaStoreId])
+  @@index([addressId])
   @@index([status])
   @@index([createdAt])
 }
@@ -246,14 +331,74 @@ model OrderItem {
 }
 
 // ============================================
-// EARNINGS & REBATES
+// ELECTRICITY BILL MANAGEMENT
+// ============================================
+
+enum BillStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+model ElectricityBill {
+  id              String   @id @default(cuid())
+  billNumber      String   @unique
+
+  // Customer who uploaded the bill
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+
+  // Kirana store processing the payment
+  kiranaStoreId   String
+  kiranaStore     KiranaStore @relation(fields: [kiranaStoreId], references: [id])
+
+  // Bill details
+  billImageUrl    String
+  amount          Float
+  dueDate         DateTime?
+
+  // Status
+  status          BillStatus @default(PENDING)
+
+  // Payment details
+  paymentMethod   String?  @default("cash") // cash, online, wallet
+  transactionId   String?
+  paidAt          DateTime?
+
+  // Commission/charges
+  serviceCharge   Float    @default(0)
+  kiranaCommission Float   @default(0)
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([kiranaStoreId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================
+// EARNINGS & PAYOUTS
 // ============================================
 
 enum EarningType {
   ORDER_COMMISSION
   SCREEN_AD
+  BILL_COMMISSION
   REFERRAL
   BONUS
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 model StoreEarning {
@@ -266,13 +411,25 @@ model StoreEarning {
   amount          Float
   description     String
 
+  // Deductions (platform fee, tax, etc.)
+  deduction       Float    @default(0)
+  netAmount       Float    // amount - deduction
+
+  // Payout tracking
+  payoutStatus    PayoutStatus @default(PENDING)
+  payoutDate      DateTime?
+  payoutMethod    String?  // bank_transfer, upi, etc.
+  payoutReference String?
+
   // References
   orderId         String?
   screenSlotId    String?
 
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([kiranaStoreId])
+  @@index([payoutStatus])
   @@index([createdAt])
 }
 
