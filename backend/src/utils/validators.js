@@ -266,6 +266,225 @@ export const validateKiranaStoreUpdate = (data) => {
   return true;
 };
 
+/**
+ * Validate product data
+ * @param {Object} data - Product data to validate
+ * @returns {boolean} True if valid
+ * @throws {ValidationError} If invalid
+ */
+export const validateProduct = (data) => {
+  const {
+    name,
+    brand,
+    category,
+    imageUrl,
+    mrp,
+    discountedPrice,
+    discountPercent,
+    stockQuantity,
+    minOrderQty,
+    maxOrderQty,
+    commissionType,
+    commissionValue,
+  } = data;
+
+  // Required fields
+  validateRequired(name, 'Product name', 2);
+  validateRequired(brand, 'Brand name', 2);
+  validateRequired(category, 'Category', 2);
+  validateRequired(imageUrl, 'Image URL', 5);
+
+  // Pricing validation
+  if (mrp === undefined || mrp === null) {
+    throw new ValidationError('MRP is required');
+  }
+
+  const mrpValue = parseFloat(mrp);
+  if (isNaN(mrpValue) || mrpValue <= 0) {
+    throw new ValidationError('MRP must be a positive number');
+  }
+
+  if (discountedPrice === undefined || discountedPrice === null) {
+    throw new ValidationError('Discounted price is required');
+  }
+
+  const discountedPriceValue = parseFloat(discountedPrice);
+  if (isNaN(discountedPriceValue) || discountedPriceValue <= 0) {
+    throw new ValidationError('Discounted price must be a positive number');
+  }
+
+  if (discountedPriceValue > mrpValue) {
+    throw new ValidationError('Discounted price cannot be greater than MRP');
+  }
+
+  // Discount percent
+  if (discountPercent !== undefined) {
+    const discountPercentValue = parseFloat(discountPercent);
+    if (isNaN(discountPercentValue) || discountPercentValue < 0 || discountPercentValue > 100) {
+      throw new ValidationError('Discount percent must be between 0 and 100');
+    }
+  }
+
+  // Stock quantity
+  if (stockQuantity !== undefined) {
+    const stockValue = parseInt(stockQuantity);
+    if (isNaN(stockValue) || stockValue < 0) {
+      throw new ValidationError('Stock quantity must be a non-negative integer');
+    }
+  }
+
+  // Order quantity limits
+  if (minOrderQty !== undefined) {
+    const minValue = parseInt(minOrderQty);
+    if (isNaN(minValue) || minValue < 1) {
+      throw new ValidationError('Minimum order quantity must be at least 1');
+    }
+  }
+
+  if (maxOrderQty !== undefined) {
+    const maxValue = parseInt(maxOrderQty);
+    if (isNaN(maxValue) || maxValue < 1) {
+      throw new ValidationError('Maximum order quantity must be at least 1');
+    }
+
+    if (minOrderQty !== undefined) {
+      const minValue = parseInt(minOrderQty);
+      if (maxValue < minValue) {
+        throw new ValidationError('Maximum order quantity must be greater than or equal to minimum');
+      }
+    }
+  }
+
+  // Commission validation
+  if (commissionType !== undefined) {
+    if (!['percentage', 'fixed'].includes(commissionType)) {
+      throw new ValidationError('Commission type must be "percentage" or "fixed"');
+    }
+  }
+
+  if (commissionValue !== undefined) {
+    const commissionVal = parseFloat(commissionValue);
+    if (isNaN(commissionVal) || commissionVal < 0) {
+      throw new ValidationError('Commission value must be a non-negative number');
+    }
+
+    if (commissionType === 'percentage' && commissionVal > 100) {
+      throw new ValidationError('Percentage commission cannot exceed 100%');
+    }
+  }
+
+  return true;
+};
+
+/**
+ * Validate product update data
+ * @param {Object} data - Partial product data to validate
+ * @returns {boolean} True if valid
+ * @throws {ValidationError} If invalid
+ */
+export const validateProductUpdate = (data) => {
+  const {
+    name,
+    brand,
+    category,
+    imageUrl,
+    mrp,
+    discountedPrice,
+    discountPercent,
+    stockQuantity,
+    minOrderQty,
+    maxOrderQty,
+    commissionType,
+    commissionValue,
+  } = data;
+
+  // Validate only provided fields
+  if (name !== undefined) {
+    validateRequired(name, 'Product name', 2);
+  }
+
+  if (brand !== undefined) {
+    validateRequired(brand, 'Brand name', 2);
+  }
+
+  if (category !== undefined) {
+    validateRequired(category, 'Category', 2);
+  }
+
+  if (imageUrl !== undefined) {
+    validateRequired(imageUrl, 'Image URL', 5);
+  }
+
+  // Pricing
+  if (mrp !== undefined) {
+    const mrpValue = parseFloat(mrp);
+    if (isNaN(mrpValue) || mrpValue <= 0) {
+      throw new ValidationError('MRP must be a positive number');
+    }
+  }
+
+  if (discountedPrice !== undefined) {
+    const discountedPriceValue = parseFloat(discountedPrice);
+    if (isNaN(discountedPriceValue) || discountedPriceValue <= 0) {
+      throw new ValidationError('Discounted price must be a positive number');
+    }
+
+    if (mrp !== undefined) {
+      const mrpValue = parseFloat(mrp);
+      if (discountedPriceValue > mrpValue) {
+        throw new ValidationError('Discounted price cannot be greater than MRP');
+      }
+    }
+  }
+
+  if (discountPercent !== undefined) {
+    const discountPercentValue = parseFloat(discountPercent);
+    if (isNaN(discountPercentValue) || discountPercentValue < 0 || discountPercentValue > 100) {
+      throw new ValidationError('Discount percent must be between 0 and 100');
+    }
+  }
+
+  if (stockQuantity !== undefined) {
+    const stockValue = parseInt(stockQuantity);
+    if (isNaN(stockValue) || stockValue < 0) {
+      throw new ValidationError('Stock quantity must be a non-negative integer');
+    }
+  }
+
+  if (minOrderQty !== undefined) {
+    const minValue = parseInt(minOrderQty);
+    if (isNaN(minValue) || minValue < 1) {
+      throw new ValidationError('Minimum order quantity must be at least 1');
+    }
+  }
+
+  if (maxOrderQty !== undefined) {
+    const maxValue = parseInt(maxOrderQty);
+    if (isNaN(maxValue) || maxValue < 1) {
+      throw new ValidationError('Maximum order quantity must be at least 1');
+    }
+  }
+
+  if (commissionType !== undefined) {
+    if (!['percentage', 'fixed'].includes(commissionType)) {
+      throw new ValidationError('Commission type must be "percentage" or "fixed"');
+    }
+  }
+
+  if (commissionValue !== undefined) {
+    const commissionVal = parseFloat(commissionValue);
+    if (isNaN(commissionVal) || commissionVal < 0) {
+      throw new ValidationError('Commission value must be a non-negative number');
+    }
+
+    if (commissionType === 'percentage' && commissionVal > 100) {
+      throw new ValidationError('Percentage commission cannot exceed 100%');
+    }
+  }
+
+  return true;
+};
+
 export default {
   validatePhone,
   validateEmail,
@@ -276,4 +495,6 @@ export default {
   validateRequired,
   validateKiranaStore,
   validateKiranaStoreUpdate,
+  validateProduct,
+  validateProductUpdate,
 };

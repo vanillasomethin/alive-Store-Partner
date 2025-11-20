@@ -14,6 +14,11 @@ import {
   getNearbyStores,
   listStores,
 } from '../controllers/kiranaController.js';
+import {
+  addProductToStore,
+  updateProduct,
+  removeProduct,
+} from '../controllers/productController.js';
 
 const router = express.Router();
 
@@ -66,5 +71,38 @@ router.put('/:id', asyncHandler(updateStore));
 router.get('/:id/analytics', asyncHandler(getStoreAnalytics));
 // In production, add: authenticate, isKirana
 // router.get('/:id/analytics', authenticate, isKirana, asyncHandler(getStoreAnalytics));
+
+// ============================================
+// PRODUCT MANAGEMENT ROUTES
+// ============================================
+
+/**
+ * @route   POST /api/kirana/:id/products
+ * @desc    Add product to Kirana store
+ * @access  Protected (store owner only)
+ * @body    { name, brand, category, description?, imageUrl, mrp, discountedPrice, discountPercent?, stockQuantity?, commissionType?, commissionValue? }
+ */
+router.post('/:id/products', asyncHandler(addProductToStore));
+// In production, add: authenticate, isKirana
+// router.post('/:id/products', authenticate, isKirana, asyncHandler(addProductToStore));
+
+/**
+ * @route   PUT /api/kirana/:id/products/:pid
+ * @desc    Update product (stock, price, etc.)
+ * @access  Protected (store owner only)
+ * @body    Partial product data
+ */
+router.put('/:id/products/:pid', asyncHandler(updateProduct));
+// In production, add: authenticate, isKirana
+// router.put('/:id/products/:pid', authenticate, isKirana, asyncHandler(updateProduct));
+
+/**
+ * @route   DELETE /api/kirana/:id/products/:pid
+ * @desc    Remove product from store
+ * @access  Protected (store owner only)
+ */
+router.delete('/:id/products/:pid', asyncHandler(removeProduct));
+// In production, add: authenticate, isKirana
+// router.delete('/:id/products/:pid', authenticate, isKirana, asyncHandler(removeProduct));
 
 export default router;
