@@ -1,0 +1,7 @@
+{
+  "name": "ALIVE - Kirana Partner",
+  "description": "The operational dashboard for ALIVE Kirana partners to manage ad revenue, inventory, order fulfillment, and rebates.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
