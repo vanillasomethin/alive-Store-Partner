@@ -63,8 +63,8 @@ app.get(API_PREFIX, (req, res) => {
       health: '/health',
       api: API_PREFIX,
       auth: `${API_PREFIX}/auth`,
+      kirana: `${API_PREFIX}/kirana`,
       // Add more routes as they are created
-      // kirana: `${API_PREFIX}/kirana`,
       // products: `${API_PREFIX}/products`,
       // orders: `${API_PREFIX}/orders`,
     },
@@ -73,15 +73,15 @@ app.get(API_PREFIX, (req, res) => {
 
 // Import route modules
 import authRoutes from './routes/auth.js';
+import kiranaRoutes from './routes/kirana.js';
 
 // Register routes
 app.use(`${API_PREFIX}/auth`, authRoutes);
+app.use(`${API_PREFIX}/kirana`, kiranaRoutes);
 
 // TODO: Add more routes as needed
-// import kiranaRoutes from './routes/kirana.js';
 // import productRoutes from './routes/products.js';
 // import orderRoutes from './routes/orders.js';
-// app.use(`${API_PREFIX}/kirana`, kiranaRoutes);
 // app.use(`${API_PREFIX}/products`, productRoutes);
 // app.use(`${API_PREFIX}/orders`, orderRoutes);
 
