@@ -1,0 +1,338 @@
+// ALIVE Advertising Platform Database Schema
+// This schema defines the core models for the platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+model KiranaStore {
+  id              String   @id @default(cuid())
+  name            String
+  ownerName       String
+  ownerPhone      String   @unique
+  email           String?  @unique
+
+  // Location details
+  address         String
+  city            String
+  state           String
+  pincode         String
+  latitude        Float
+  longitude       Float
+
+  // Store details
+  storeType       String   @default("general")
+  gstin           String?
+
+  // Status
+  isActive        Boolean  @default(true)
+  isVerified      Boolean  @default(false)
+
+  // Relations
+  products        AdvertisedProduct[]
+  orders          Order[]
+  earnings        StoreEarning[]
+  screenSlots     ScreenSlot[]
+  rebates         Rebate[]
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([ownerPhone])
+  @@index([latitude, longitude])
+}
+
+model Customer {
+  id              String   @id @default(cuid())
+  name            String
+  phone           String   @unique
+  email           String?  @unique
+
+  // Location
+  address         String?
+  city            String?
+  latitude        Float?
+  longitude       Float?
+
+  // Status
+  isActive        Boolean  @default(true)
+
+  // Relations
+  orders          Order[]
+  cart            CartItem[]
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([phone])
+  @@index([latitude, longitude])
+}
+
+// ============================================
+// PRODUCT & INVENTORY
+// ============================================
+
+model AdvertisedProduct {
+  id              String   @id @default(cuid())
+
+  // Product details
+  name            String
+  brand           String
+  category        String
+  description     String?
+  imageUrl        String
+
+  // Pricing
+  mrp             Float
+  discountedPrice Float
+  discountPercent Float
+
+  // Inventory
+  stockQuantity   Int      @default(0)
+  minOrderQty     Int      @default(1)
+  maxOrderQty     Int      @default(10)
+
+  // Commission structure
+  commissionType  String   @default("percentage") // percentage or fixed
+  commissionValue Float
+
+  // Store relation
+  kiranaStoreId   String
+  kiranaStore     KiranaStore @relation(fields: [kiranaStoreId], references: [id], onDelete: Cascade)
+
+  // Status
+  isActive        Boolean  @default(true)
+  isAvailable     Boolean  @default(true)
+
+  // Relations
+  orderItems      OrderItem[]
+  cartItems       CartItem[]
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([kiranaStoreId])
+  @@index([category])
+  @@index([brand])
+}
+
+model CartItem {
+  id              String   @id @default(cuid())
+
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  productId       String
+  product         AdvertisedProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantity        Int      @default(1)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+}
+
+// ============================================
+// ORDERS & FULFILLMENT
+// ============================================
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY_FOR_PICKUP
+  OUT_FOR_DELIVERY
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique
+
+  // Customer relation
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+
+  // Store relation
+  kiranaStoreId   String
+  kiranaStore     KiranaStore @relation(fields: [kiranaStoreId], references: [id])
+
+  // Order details
+  items           OrderItem[]
+  totalAmount     Float
+  discountAmount  Float    @default(0)
+  finalAmount     Float
+
+  // Commission for store
+  commissionAmount Float
+
+  // Status
+  status          OrderStatus @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
+
+  // Delivery details
+  deliveryAddress String
+  deliveryLat     Float?
+  deliveryLng     Float?
+  deliveryPhone   String
+
+  // Payment details
+  paymentMethod   String   @default("online") // online, cod
+  razorpayOrderId String?
+  razorpayPaymentId String?
+
+  // Timestamps
+  confirmedAt     DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([kiranaStoreId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId       String
+  product         AdvertisedProduct @relation(fields: [productId], references: [id])
+
+  // Snapshot of product at order time
+  productName     String
+  productImage    String
+  mrp             Float
+  discountedPrice Float
+
+  quantity        Int
+  totalPrice      Float
+
+  // Commission for this item
+  commissionAmount Float
+
+  createdAt       DateTime @default(now())
+
+  @@index([orderId])
+}
+
+// ============================================
+// EARNINGS & REBATES
+// ============================================
+
+enum EarningType {
+  ORDER_COMMISSION
+  SCREEN_AD
+  REFERRAL
+  BONUS
+}
+
+model StoreEarning {
+  id              String   @id @default(cuid())
+
+  kiranaStoreId   String
+  kiranaStore     KiranaStore @relation(fields: [kiranaStoreId], references: [id], onDelete: Cascade)
+
+  type            EarningType
+  amount          Float
+  description     String
+
+  // References
+  orderId         String?
+  screenSlotId    String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([kiranaStoreId])
+  @@index([createdAt])
+}
+
+model Rebate {
+  id              String   @id @default(cuid())
+
+  kiranaStoreId   String
+  kiranaStore     KiranaStore @relation(fields: [kiranaStoreId], references: [id], onDelete: Cascade)
+
+  // Rebate details
+  brandName       String
+  productCategory String
+  rebateAmount    Float
+  rebatePercent   Float?
+
+  // Conditions
+  minOrderValue   Float    @default(0)
+  validFrom       DateTime
+  validTill       DateTime
+
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([kiranaStoreId])
+  @@index([isActive])
+}
+
+// ============================================
+// SCREEN AD MANAGEMENT
+// ============================================
+
+model ScreenSlot {
+  id              String   @id @default(cuid())
+
+  kiranaStoreId   String
+  kiranaStore     KiranaStore @relation(fields: [kiranaStoreId], references: [id], onDelete: Cascade)
+
+  // Ad details
+  brandName       String
+  adImageUrl      String
+  adVideoUrl      String?
+
+  // Duration & pricing
+  startDate       DateTime
+  endDate         DateTime
+  pricePerDay     Float
+  totalAmount     Float
+
+  // Metrics
+  impressions     Int      @default(0)
+  clicks          Int      @default(0)
+
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([kiranaStoreId])
+  @@index([isActive])
+  @@index([startDate, endDate])
+}
