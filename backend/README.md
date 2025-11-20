@@ -127,30 +127,63 @@ GET /api
 
 ## 🗄️ Database Schema
 
-The database schema is defined in `prisma/schema.prisma` and includes:
+The database schema is defined in `prisma/schema.prisma` with **13 models** covering the entire platform.
 
-### Core Models
+📖 **See [PRISMA_SETUP.md](./PRISMA_SETUP.md) for detailed setup instructions**
 
-- **KiranaStore** - Store owner accounts and details
-- **Customer** - Customer accounts
-- **AdvertisedProduct** - Products available at stores
-- **Order** - Customer orders
-- **OrderItem** - Individual items in orders
+### User Management (3 models)
+
+- **KiranaStore** - Store owner accounts with location, contact, verification status
+- **Customer** - Customer accounts with **wallet balance** for cashback/credits
+- **Address** - Multiple addresses per customer (Home, Work, Other) with default flag
+
+### Shopping & Products (5 models)
+
+- **AdvertisedProduct** - Products with brand, price, discount, commission structure
 - **CartItem** - Shopping cart items
+- **ShoppingList** - Saved shopping lists with custom names
+- **ShoppingListItem** - List items that can link to products OR be custom items
 
-### Earnings & Monetization
+### Orders (2 models)
 
-- **StoreEarning** - Commission and ad revenue tracking
-- **Rebate** - Brand rebate offers
-- **ScreenSlot** - Digital ad screen slots
+- **Order** - Customer orders with status tracking, payment details, commission
+- **OrderItem** - Individual items in orders with product snapshot and commission
+
+### Electricity Bills (1 model)
+
+- **ElectricityBill** - Bill payment service
+  - Customer uploads bill image
+  - Kirana processes payment
+  - Service charge + commission tracking
+  - Status: PENDING → PAID
+
+### Earnings & Monetization (3 models)
+
+- **StoreEarning** - All earnings with deductions and **payout tracking**
+  - Types: ORDER_COMMISSION, BILL_COMMISSION, SCREEN_AD, REFERRAL, BONUS
+  - Payout status, date, method, reference number
+- **Rebate** - Brand rebate offers with validity and conditions
+- **ScreenSlot** - Digital ad slots with impression/click tracking
+
+### Enums (5 total)
+
+- **OrderStatus** - PENDING → CONFIRMED → PREPARING → COMPLETED
+- **PaymentStatus** - PENDING → COMPLETED
+- **BillStatus** - PENDING → PAID
+- **EarningType** - ORDER_COMMISSION, BILL_COMMISSION, SCREEN_AD, etc.
+- **PayoutStatus** - PENDING → COMPLETED
 
 ### Key Features
 
 - ✅ Comprehensive timestamps (createdAt, updatedAt)
-- ✅ Proper relations and cascading deletes
-- ✅ Enums for statuses (OrderStatus, PaymentStatus, EarningType)
-- ✅ Indexed fields for performance
-- ✅ Location support (latitude/longitude)
+- ✅ Proper relations with @relation() and cascading deletes
+- ✅ Indexed fields for performance (phone, location, status, dates)
+- ✅ Location support (latitude/longitude) for nearby search
+- ✅ Customer wallet for cashback/credits
+- ✅ Multiple addresses with default flag
+- ✅ Shopping lists with custom items
+- ✅ Complete payout tracking system
+- ✅ Bill payment service integration
 
 ## 🔒 Error Handling
 
